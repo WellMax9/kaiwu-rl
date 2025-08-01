@@ -93,6 +93,8 @@ def reward_process(end_dist,
                    history_dist, 
                    find_obstacle,
                    obstacle_dist,
+                   find_treasure,
+                   treasure_dist,
                    is_new_exploration, 
                    no_explore_steps,
                    step_count=0,
@@ -139,10 +141,14 @@ def reward_process(end_dist,
         stagnation_penalty = -0.044 - 0.001 * (no_explore_steps - 100)
 
     # ===== 7. 宝箱相关奖励 =====
-    
+    if find_treasure:
+        progress_ratio = 1 - treasure_dist
+        treasure_end_reward = 0.015 * (progress_ratio ** 2)
+        if treasure_dist < 0.03:
+            treasure_end_reward += 1.5
 
     # ===== 8. 返回多个指标（便于训练监控） ====
-    return [explore_reward, end_reward, dist_reward, obstacle_penalty, step_penalty, stagnation_penalty]
+    return [explore_reward, end_reward, dist_reward, obstacle_penalty, step_penalty, stagnation_penalty, treasure_end_reward]
 
 
 @attached

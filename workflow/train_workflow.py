@@ -63,7 +63,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
         for episode in range(n_episode):
             collector = list()
             win_rate = 0
-            Reward_list = [0] * 6
+            Reward_list = [0] * 7
 
             # Retrieving training metrics
             # 获取训练中的指标
@@ -166,6 +166,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                             "diy_3": Reward_list[1],
                             "diy_4": Reward_list[2],
                             "diy_5": Reward_list[3],
+                            "diy_6": Reward_list[6],  # 宝箱奖励
                         }
 
                     if len(collector) > 0:

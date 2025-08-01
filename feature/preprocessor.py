@@ -59,6 +59,7 @@ def get_obstacle(map_info):
 class Preprocessor:
     def __init__(self) -> None:
         self.move_action_num = 8
+        self.feature_treasure_pos = np.zeros(6)
         self.reset()
 
     def reset(self):
@@ -73,6 +74,8 @@ class Preprocessor:
         self.no_explore_steps = 0  # 重置连续未探索步数
         self.current_exploration_status = False
         self.found_obstacle = False
+        self.found_treasure = False
+        self.feature_end_pos = np.zeros(6)
 
     def _get_pos_feature(self, found, cur_pos, target_pos):
         relative_pos = tuple(y - x for x, y in zip(cur_pos, target_pos))
@@ -149,6 +152,7 @@ class Preprocessor:
             if organ["sub_type"] == 1: #宝箱
                 if organ["status"] == 1:
                     #观测到的宝箱位置特征
+                    self.found_treasure = True
                     self.feature_treasure_pos = self._get_pos_feature(1, self.cur_pos, (organ["pos"]["x"], organ["pos"]["z"]))
 
 
@@ -234,7 +238,7 @@ class Preprocessor:
                                   self.feature_history_pos, 
                                   self.feature_obstacle_pos, #新增障碍特征
                                   self.feature_exploration,  # 新增探索特征
-                                  self.feature_treasure_pos if hasattr(self, 'feature_treasure_pos') else np.zeros(6), #观测到的宝箱特征
+                                  self.feature_treasure_pos, #观测到的宝箱特征
                                   legal_action])
 
         return (
@@ -244,6 +248,8 @@ class Preprocessor:
                            self.feature_history_pos[-1],
                            self.found_obstacle,
                            self.feature_obstacle_pos[-1],
+                           self.found_treasure,
+                           self.feature_treasure_pos[-1],
                            self.current_exploration_status,
                            self.no_explore_steps,
                            self.step_no,
