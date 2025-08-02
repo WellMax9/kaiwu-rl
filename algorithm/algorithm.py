@@ -20,7 +20,7 @@ from agent_target_dqn.feature.definition import ActData
 
 class Algorithm:
     def __init__(self, device, logger, monitor):
-        self.act_shape = Config.DIM_OF_ACTION_DIRECTION
+        self.act_shape = Config.DIM_OF_MOVE_DIRECTION
         self.direction_space = Config.DIM_OF_ACTION_DIRECTION
         self.talent_direction = Config.DIM_OF_TALENT
         self.obs_shape = Config.DIM_OF_OBSERVATION
@@ -52,7 +52,12 @@ class Algorithm:
 
         batch_feature_vec = [frame.obs for frame in t_data]
         batch_action = torch.LongTensor(np.array([int(frame.act) for frame in t_data])).view(-1, 1).to(self.device)
-        _batch_obs_legal = torch.stack([frame._obs_legal for frame in t_data]).bool().to(self.device)
+        """for i, f in enumerate(t_data):
+            try:
+                print(f"shape[{i}] = {np.array(f._obs_legal).shape}")
+            except Exception as e:
+                print(f"[{i}] error: {e}")"""
+        _batch_obs_legal = torch.stack([torch.tensor(frame._obs_legal) for frame in t_data]).bool().to(self.device)
         _batch_feature_vec = [frame._obs for frame in t_data]
 
         rew = torch.tensor(

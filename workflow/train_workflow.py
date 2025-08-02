@@ -38,6 +38,11 @@ def workflow(envs, agents, logger=None, monitor=None):
 
         while True:
             for g_data, monitor_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger, monitor):
+                """for i, f in enumerate(g_data):  #输出为16
+                    try:
+                        print(f"g_data shape[{i}] = {np.array(f._obs_legal).shape}")
+                    except Exception as e:
+                        print(f"[{i}] error: {e}")"""
                 agent.learn(g_data)
                 g_data.clear()
 
@@ -61,9 +66,9 @@ def workflow(envs, agents, logger=None, monitor=None):
 def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
     try:
         for episode in range(n_episode):
-            collector = list()
+            collector = []
             win_rate = 0
-            Reward_list = [0] * 7
+            Reward_list = [0] * 9
 
             # Retrieving training metrics
             # 获取训练中的指标
@@ -121,6 +126,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                 # Feature processing
                 # 特征处理
                 _obs_data, reward_list = agent.observation_process(_obs, _extra_info)
+                assert(len(_obs_data.legal_act) == 16)
                 reward = sum(reward_list)
                 Reward_list = list(np.add(Reward_list,reward_list))
 
@@ -129,13 +135,13 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                 game_info = _extra_info["game_info"]
                 if truncated:
                     win_rate = agent.update_win_rate(False)
-                    reward = -30
+                    reward = -10
                     logger.info(
                         f"Game truncated! step_no:{step_no} score:{game_info['total_score']} win_rate:{win_rate}"
                     )
                 elif terminated:
                     win_rate = agent.update_win_rate(True)
-                    reward = 10
+                    reward = 20
                     logger.info(
                         f"Game terminated! step_no:{step_no} score:{game_info['total_score']} win_rate:{win_rate}"
                     )
@@ -162,11 +168,10 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                     if monitor:
                         monitor_data = {
                             "diy_1": win_rate,
-                            "diy_2": Reward_list[0] + Reward_list[5],
-                            "diy_3": Reward_list[1],
-                            "diy_4": Reward_list[2],
-                            "diy_5": Reward_list[3],
-                            "diy_6": Reward_list[6],  # 宝箱奖励
+                            "diy_2": Reward_list[8], #buff奖励
+                            "diy_3": Reward_list[1], #终点奖励
+                            "diy_4": Reward_list[3], #撞墙奖励
+                            "diy_5": Reward_list[7], #宝箱距离奖励
                         }
 
                     if len(collector) > 0:

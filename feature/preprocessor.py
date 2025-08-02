@@ -58,8 +58,7 @@ def get_obstacle(map_info):
 
 class Preprocessor:
     def __init__(self) -> None:
-        self.move_action_num = 8
-        self.feature_treasure_pos = np.zeros(6)
+        self.move_action_num = 16
         self.reset()
 
     def reset(self):
@@ -75,7 +74,11 @@ class Preprocessor:
         self.current_exploration_status = False
         self.found_obstacle = False
         self.found_treasure = False
-        self.feature_end_pos = np.zeros(6)
+        self.treasure_count = 0
+        self.new_treasure = False
+        self.buff_count = 0
+        self.new_buff = False
+        self.bad_move = False
 
     def _get_pos_feature(self, found, cur_pos, target_pos):
         relative_pos = tuple(y - x for x, y in zip(cur_pos, target_pos))
@@ -119,7 +122,9 @@ class Preprocessor:
             self.history_pos.pop(0)
 
         # End position
-        # 终点位置
+        # 终点，宝箱，加速
+        self.found_treasure = False 
+        self.found_buff = False
         for organ in obs["frame_state"]["organs"]:
             if organ["sub_type"] == 4:
                 end_pos_dis = RelativeDistance[organ["relative_pos"]["l2_distance"]]
@@ -148,13 +153,21 @@ class Preprocessor:
                     self.end_pos_dir = end_pos_dir
                     self.end_pos_dis = end_pos_dis
 
-            # 观测到的宝箱位置
             if organ["sub_type"] == 1: #宝箱
                 if organ["status"] == 1:
                     #观测到的宝箱位置特征
                     self.found_treasure = True
                     self.feature_treasure_pos = self._get_pos_feature(1, self.cur_pos, (organ["pos"]["x"], organ["pos"]["z"]))
 
+            if organ["sub_type"] == 2:
+                if organ["status"] == 1:
+                    self.found_buff = True
+                    self.feature_buff_pos = self._get_pos_feature(1, self.cur_pos, (organ["pos"]["x"], organ["pos"]["z"]))
+                else:
+                    self.feature_buff_pos = np.zeros(6)
+
+        if self.found_treasure == False:
+            self.feature_treasure_pos = np.zeros(6)
 
         self.last_pos_norm = self.cur_pos_norm
         self.cur_pos_norm = norm(self.cur_pos, 128, -128)
@@ -164,19 +177,43 @@ class Preprocessor:
         # 历史位置特征
         self.feature_history_pos = self._get_pos_feature(1, self.cur_pos, self.history_pos[0])
 
-        #Find Obstacle
+        #障碍物特征
         obstacle_relative_pos = get_obstacle(obs["map_info"])
         if (obstacle_relative_pos):
             self.found_obstacle = True
             obstacle_pos = (obstacle_relative_pos[0] + self.cur_pos[0] - 5,
                             obstacle_relative_pos[1] + self.cur_pos[1] - 5)
             self.feature_obstacle_pos = self._get_pos_feature(1, self.cur_pos, obstacle_pos)
-        else:
+        else: 
             self.found_obstacle = False
-            self.feature_obstacle_pos = self._get_pos_feature(0,self.cur_pos, (127,127))
+            self.feature_obstacle_pos = np.zeros(6)
         
+        #技能使用特征
+        self.ready = obs["legal_act"][1]
+        self.cooldown = obs["frame_state"]["heroes"][0]["talent"]["cooldown"] / 100.0
+        self.feature_talent = np.array((self.ready,self.cooldown,))
+        
+        #吃宝箱状态
+        new_count = obs["score_info"]["treasure_collected_count"]
+        if self.treasure_count < new_count: 
+            self.new_treasure = True
+            self.treasure_count = new_count
+        else:
+            self.new_treasure = False    
+    
+        #吃buff状态
+        new_buff_count = obs["score_info"]["buff_count"]
+        if self.buff_count < new_buff_count:
+            self.new_buff = True
+            self.buff_count = new_buff_count
+        else:
+            self.new_buff = False
+        
+        #更新状态
         self.move_usable = True
         self.last_action = last_action
+
+
         
     def _get_exploration_features(self):
         """计算区块探索相关特征"""
@@ -238,7 +275,9 @@ class Preprocessor:
                                   self.feature_history_pos, 
                                   self.feature_obstacle_pos, #新增障碍特征
                                   self.feature_exploration,  # 新增探索特征
-                                  self.feature_treasure_pos, #观测到的宝箱特征
+                                  self.feature_talent, #新增技能特征
+                                  self.feature_treasure_pos, #新增宝箱特征
+                                  self.feature_buff_pos, #新增buff特征
                                   legal_action])
 
         return (
@@ -250,9 +289,16 @@ class Preprocessor:
                            self.feature_obstacle_pos[-1],
                            self.found_treasure,
                            self.feature_treasure_pos[-1],
+                           self.new_treasure,
+                           self.found_buff,
+                           self.feature_buff_pos[-1],
+                           self.new_buff,
                            self.current_exploration_status,
                            self.no_explore_steps,
                            self.step_no,
+                           self.last_action,
+                           1000,
+                           self.bad_move
                            ),
         )
 
@@ -265,10 +311,17 @@ class Preprocessor:
             and self.last_action > -1
         ):
             self.bad_move_ids.add(self.last_action)
+            self.bad_move = True
         else:
             self.bad_move_ids = set()
+            self.bad_move = False
 
         legal_action = [self.move_usable] * self.move_action_num
+        
+        if self.ready == 0:
+            for i in range(8,16):
+                legal_action[i] = 0
+    
         for move_id in self.bad_move_ids:
             legal_action[move_id] = 0
 

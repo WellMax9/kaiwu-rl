@@ -93,11 +93,16 @@ def reward_process(end_dist,
                    history_dist, 
                    find_obstacle,
                    obstacle_dist,
-                   find_treasure,
+                   find_treausre,
                    treasure_dist,
+                   new_treasure,
+                   find_buff,
+                   buff_dist,
+                   new_buff,
                    is_new_exploration, 
                    no_explore_steps,
-                   step_count=0,
+                   step_count,
+                   last_action,
                    max_steps=1000,
                    is_collision=False):
     """
@@ -105,22 +110,23 @@ def reward_process(end_dist,
     """
 
     # ===== 1. 探索效率奖励（增强 + 时间衰减） =====
-    time_decay = 1 - min(step_count / max_steps, 1.0)
+    #time_decay = 1 - min(step_count / max_steps, 1.0)
+    time_decay = 1
     explore_reward = 0.05 * time_decay if is_new_exploration else 0
 
-    # ===== 2. 终点距离奖励（非线性 + 冲线鼓励） =====
+    # ===== 2. 终点距离奖励（非线性） =====
     progress_ratio = 1 - end_dist
-    end_reward = 0.02 * (progress_ratio ** 2)
-    if end_dist < 0.03:
-        end_reward += 1.0
+    end_reward = 0.03 * (progress_ratio ** 2)
+    if end_dist < 0.02:
+        end_reward += 0.005
 
     # ===== 3. 路径优化奖励（修正 history_dist 范围） =====
     MAX_HISTORY_DIST = 10 / 128  # ≈ 0.078125
-    dist_reward = 0.015 * min(history_dist / MAX_HISTORY_DIST, 1.0)
+    dist_reward = min(0.015,0.02 * min(history_dist / MAX_HISTORY_DIST, 1.0))
 
     # ===== 4. 障碍物惩罚/奖励（缓冲带） =====
     if is_collision:
-        obstacle_penalty = -2.0
+        obstacle_penalty = -0.5
     elif find_obstacle:
         if obstacle_dist < 0.01:
             obstacle_penalty = -1.0 * (0.01 - obstacle_dist)
@@ -132,29 +138,48 @@ def reward_process(end_dist,
         obstacle_penalty = 0.005  # 安全无障碍小奖励
 
     # ===== 5. 基础步数惩罚（略增） =====
-    step_penalty = -0.003
+    step_penalty = -0.005
 
     # ===== 6. 停滞惩罚（分段增长） =====
-    if no_explore_steps < 100:
+    if no_explore_steps < 20:
         stagnation_penalty = 0
+    elif no_explore_steps < 100:
+        stagnation_penalty = -0.002 - 0.0002 * (no_explore_steps - 20)
     else:
-        stagnation_penalty = -0.044 - 0.001 * (no_explore_steps - 100)
+        stagnation_penalty = -0.02 - 0.002 * (no_explore_steps - 100)
+        
+    # ===== 7. 使用技能奖励 =====
+    talent_reward = 0.3 if last_action > 7 else 0
+ 
+    # ===== 8. 宝箱距离奖励 =====
+    treasure_reward = 0.01 * ((1 - treasure_dist) ** 2) if find_treausre else 0
+    if treasure_dist < 0.02 and find_treausre:
+        treasure_reward += 0.002
 
-    # ===== 7. 宝箱相关奖励 =====
-    treasure_end_reward = 0
-    if find_treasure:
-        progress_ratio = 1 - treasure_dist
-        treasure_end_reward = 0.015 * (progress_ratio ** 2)
-        if treasure_dist < 0.03:
-            treasure_end_reward += 1.5
+    if new_treasure:
+        treasure_reward += 2.0
 
-    # ===== 8. 返回多个指标（便于训练监控） ====
-    return [explore_reward, end_reward, dist_reward, obstacle_penalty, step_penalty, stagnation_penalty, treasure_end_reward]
+    # ===== 9. buff距离奖励 =====
+    buff_reward = 0.01 * ((1 - buff_dist) ** 2) if find_buff else 0
+    if buff_dist < 0.02 and find_buff:
+        buff_reward += 0.002
+
+    if new_buff:
+        buff_reward += 0.5
+   
+    # ===== 10. 返回多个指标（便于训练监控） ====
+    return [explore_reward, end_reward, dist_reward, obstacle_penalty, step_penalty, stagnation_penalty, talent_reward, treasure_reward, buff_reward]
 
 
 @attached
 def sample_process(list_game_data):
-    return [SampleData(**i.__dict__) for i in list_game_data]
+    #for game_data in list_game_data:
+        #assert(len(game_data._obs_legal) == 16)
+    sample_list = [SampleData(**i.__dict__) for i in list_game_data]
+    #for i, sample in enumerate(sample_list):
+        #assert(len(sample._obs_legal) == 16)
+        #print(f"len of sample[{i}] = {np.array(sample._obs_legal).shape}")
+    return sample_list
 
 
 @attached
@@ -176,7 +201,7 @@ def SampleData2NumpyData(g_data):
 @attached
 def NumpyData2SampleData(s_data):
     obs_data_size = Config.DIM_OF_OBSERVATION
-    legal_data_size = Config.DIM_OF_ACTION_DIRECTION
+    legal_data_size = Config.DIM_OF_MOVE_DIRECTION
     return SampleData(
         obs=s_data[:obs_data_size],
         _obs=s_data[obs_data_size : 2 * obs_data_size],

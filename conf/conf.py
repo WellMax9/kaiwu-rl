@@ -16,13 +16,15 @@ class Config:
     # features
     # 特征
     FEATURES = [
-        2,
-        6,
-        6,
-        6,
-        4,
-        6, #宝箱
-        8,
+        2, #cur_pos_norm
+        6, #feature_end_pos
+        6, #feature_history_pos
+        6, #feature_obstacle_pos
+        4, #feature_exploration
+        2, #feature_talent
+        6, #feature_treasure_pos
+        6, #feature_buff_pos
+        16, #legal_act
     ]
 
     FEATURE_SPLIT_SHAPE = FEATURES
@@ -31,9 +33,10 @@ class Config:
     # observation的维度
     DIM_OF_OBSERVATION = sum(FEATURES)
 
+    DIM_OF_MOVE_DIRECTION = 16
     # Dimension of movement action direction
     # 移动动作方向的维度
-    DIM_OF_ACTION_DIRECTION = 8
+    DIM_OF_ACTION_DIRECTION = 16
 
     # Dimension of flash action direction
     # 闪现动作方向的维度
@@ -44,7 +47,7 @@ class Config:
     # Otherwise the sample dimension error may be reported
     # learner上reverb样本的输入维度
     # **注意**，此项必须正确配置，应该与definition.py中的NumpyData2SampleData函数数据对齐，否则可能报样本维度错误
-    SAMPLE_DIM = 2 * (DIM_OF_OBSERVATION + DIM_OF_ACTION_DIRECTION) + 4
+    SAMPLE_DIM = 2 * (DIM_OF_OBSERVATION + DIM_OF_MOVE_DIRECTION) + 4
 
     # Update frequency of target network
     # target网络的更新频率
