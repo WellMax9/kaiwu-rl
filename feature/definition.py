@@ -141,6 +141,7 @@ def reward_process(end_dist,
         stagnation_penalty = -0.044 - 0.001 * (no_explore_steps - 100)
 
     # ===== 7. 宝箱相关奖励 =====
+    treasure_end_reward = 0
     if find_treasure:
         progress_ratio = 1 - treasure_dist
         treasure_end_reward = 0.015 * (progress_ratio ** 2)
