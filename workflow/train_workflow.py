@@ -100,7 +100,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
             done = False
             step = 0
 
-            max_step_no = int(os.environ.get("max_step_no", "1000"))
+            max_step_no = int(os.environ.get("max_step_no", "2000"))
 
             while not done:
                 # Agent performs inference, gets the predicted action for the next frame
@@ -141,7 +141,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                     )
                 elif terminated:
                     win_rate = agent.update_win_rate(True)
-                    reward = 20
+                    reward = 25
                     logger.info(
                         f"Game terminated! step_no:{step_no} score:{game_info['total_score']} win_rate:{win_rate}"
                     )
@@ -168,10 +168,10 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, monitor):
                     if monitor:
                         monitor_data = {
                             "diy_1": win_rate,
-                            "diy_2": Reward_list[8], #buff奖励
+                            "diy_2": Reward_list[0] + Reward_list[5] + Reward_list[2], #探索奖励
                             "diy_3": Reward_list[1], #终点奖励
                             "diy_4": Reward_list[3], #撞墙奖励
-                            "diy_5": Reward_list[7], #宝箱距离奖励
+                            "diy_5": Reward_list[7] + Reward_list[8], #宝箱,buff奖励
                         }
 
                     if len(collector) > 0:

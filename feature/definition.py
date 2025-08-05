@@ -103,7 +103,7 @@ def reward_process(end_dist,
                    no_explore_steps,
                    step_count,
                    last_action,
-                   max_steps=1000,
+                   max_steps=2000,
                    is_collision=False):
     """
     优化后的迷宫探索奖励函数
@@ -116,9 +116,9 @@ def reward_process(end_dist,
 
     # ===== 2. 终点距离奖励（非线性） =====
     progress_ratio = 1 - end_dist
-    end_reward = 0.03 * (progress_ratio ** 2)
+    end_reward = 0.02 * (progress_ratio ** 2)
     if end_dist < 0.02:
-        end_reward += 0.005
+        end_reward += 0.003
 
     # ===== 3. 路径优化奖励（修正 history_dist 范围） =====
     MAX_HISTORY_DIST = 10 / 128  # ≈ 0.078125
@@ -157,7 +157,7 @@ def reward_process(end_dist,
         treasure_reward += 0.002
 
     if new_treasure:
-        treasure_reward += 2.0
+        treasure_reward += 5.0
 
     # ===== 9. buff距离奖励 =====
     buff_reward = 0.01 * ((1 - buff_dist) ** 2) if find_buff else 0
@@ -165,7 +165,7 @@ def reward_process(end_dist,
         buff_reward += 0.002
 
     if new_buff:
-        buff_reward += 0.5
+        buff_reward += 2.0
    
     # ===== 10. 返回多个指标（便于训练监控） ====
     return [explore_reward, end_reward, dist_reward, obstacle_penalty, step_penalty, stagnation_penalty, talent_reward, treasure_reward, buff_reward]

@@ -23,7 +23,9 @@ class Config:
         4, #feature_exploration
         2, #feature_talent
         6, #feature_treasure_pos
+        1, #treasure_proposition
         6, #feature_buff_pos
+        1, #buff_cooldown
         16, #legal_act
     ]
 

@@ -79,7 +79,8 @@ class Preprocessor:
         self.buff_count = 0
         self.new_buff = False
         self.bad_move = False
-
+        self.buff_cooldown = np.zeros(1)
+        
     def _get_pos_feature(self, found, cur_pos, target_pos):
         relative_pos = tuple(y - x for x, y in zip(cur_pos, target_pos))
         dist = np.linalg.norm(relative_pos)
@@ -163,8 +164,10 @@ class Preprocessor:
                 if organ["status"] == 1:
                     self.found_buff = True
                     self.feature_buff_pos = self._get_pos_feature(1, self.cur_pos, (organ["pos"]["x"], organ["pos"]["z"]))
+                    self.buff_cooldown = np.array((organ["cooldown"] / 100.0,))
                 else:
                     self.feature_buff_pos = np.zeros(6)
+                    self.buff_cooldown = np.zeros(1)
 
         if self.found_treasure == False:
             self.feature_treasure_pos = np.zeros(6)
@@ -200,6 +203,8 @@ class Preprocessor:
             self.treasure_count = new_count
         else:
             self.new_treasure = False    
+
+        self.treasure_proposition = np.array((self.treasure_count / 8,))
     
         #吃buff状态
         new_buff_count = obs["score_info"]["buff_count"]
@@ -277,7 +282,9 @@ class Preprocessor:
                                   self.feature_exploration,  # 新增探索特征
                                   self.feature_talent, #新增技能特征
                                   self.feature_treasure_pos, #新增宝箱特征
+                                  self.treasure_proposition,
                                   self.feature_buff_pos, #新增buff特征
+                                  self.buff_cooldown,
                                   legal_action])
 
         return (
@@ -297,7 +304,7 @@ class Preprocessor:
                            self.no_explore_steps,
                            self.step_no,
                            self.last_action,
-                           1000,
+                           2000,
                            self.bad_move
                            ),
         )
